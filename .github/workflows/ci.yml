@@ -1,0 +1,42 @@
+name: ORCA Ultimate CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install backend deps
+        run: |
+          cd backend
+          pip install -r requirements.txt
+          python -m py_compile main.py data_providers.py agents_engine.py
+      - name: Test health endpoint
+        run: |
+          cd backend
+          uvicorn main:app --host 0.0.0.0 --port 8000 &
+          sleep 5
+          curl -f http://localhost:8000/api/v1/health
+          curl -f http://localhost:8000/api/v1/advisory?lat=20.9&lon=70.37
+          pkill -f uvicorn || true
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Build frontend
+        run: |
+          cd frontend-web
+          npm install
+          npm run build
